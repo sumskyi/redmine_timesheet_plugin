@@ -12,11 +12,14 @@
 <%= form_tag({}, { :id => 'time_entries'}) do -%>
   <% if @timesheet.time_entries.length > 0 %>
     <h2><%= l(:label_spent_time) %> (<%= h(number_with_precision(@grand_total, :precision => @precision)) -%> <%= h(l(:field_hours)) -%>)</h2>
-    <% puts  @timesheet.time_entries.to_yaml %>
     <% @timesheet.time_entries.each do |entryname,entry|
       case @timesheet.sort
         when :user %>
-        <h3><%= h entryname -%> (<%= h number_with_precision(@total[entryname], :precision => @precision) %> <%= h(l(:field_hours)) -%>)</h3>
+        <h3>
+          <%= h entryname -%> (<%= h number_with_precision(@total[entryname], :precision => @precision) %>
+          (<%= showing_activity(entry) %>
+          <%= h(l(:field_hours)) -%>)
+        </h3>
         <%= render :partial => 'timesheet_group', :locals => {:entry => entry, :name => entryname, :total => @total[entryname] } %>
       <% when :issue %>
         <h3><%= h entryname -%> (<%= h number_with_precision(@total[entryname], :precision => @precision) %> <%= h(l(:field_hours)) -%>)</h3>
@@ -26,13 +29,13 @@
         <%= render :partial => 'timesheet_group', :locals => {:entry => entry, :name => entryname, :total => @total[entryname] } %>
       <% when :date %>
         <%#*entry[:logs].each do |log|%>
-        <% logger.debug "#{'*'*100}\n ENTRYNAME > #{entryname.to_yaml} ENTRY #{entry[:logs][0].id}\n#{'*'*100}"%> 
+        <% logger.debug "#{'*'*100}\n ENTRYNAME > #{entryname.to_yaml} ENTRY #{entry[:logs][0].id}\n#{'*'*100}"%>
 
         <h3><%= toggle_issue_arrows_date(entryname) %><%= h entryname -%> (<%= h number_with_precision(@total[entryname], :precision => @precision) %> <%= h(l(:field_hours)) -%>)</h3>
 
         <span class="<%= cycle("odd", "even") %> issue-time-entry-<%= entryname -%>" style="display:none;">
           <%= render :partial => 'timesheet_group', :locals => {:entry => entry, :name => entryname, :total => @total[entryname] } %>
-        </span> 
+        </span>
 
         <%#*end%>
         <script type="text/javascript">
@@ -58,7 +61,11 @@
         </script>
       <% else %>
         <%# Default to :project %>
-        <h3><%= h entryname -%> (<%= h number_with_precision(@total[entryname], :precision => @precision) %> <%= h(l(:field_hours)) -%>) <%= showing_users(entry[:users]) %></h3> 
+        <h3>
+          <%= h entryname -%> (<%= h number_with_precision(@total[entryname], :precision => @precision) %> <%= h(l(:field_hours)) -%>)
+          (<%= showing_activity(entry)  %>)
+          <%= showing_users(entry[:users]) %>
+        </h3>
         <%= render :partial => 'timesheet_group', :locals => {:entry => entry, :name => entryname, :total => @total[entryname] } %>
 
       <% end
