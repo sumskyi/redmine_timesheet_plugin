@@ -16,9 +16,8 @@
       case @timesheet.sort
         when :user %>
         <h3>
-          <%= h entryname -%> (<%= h number_with_precision(@total[entryname], :precision => @precision) %>
-          (<%= showing_activity(entry) %>
-          <%= h(l(:field_hours)) -%>)
+          <%= h entryname -%> (<%= h number_with_precision(@total[entryname], :precision => @precision) %> <%= h(l(:field_hours)) -%>)
+          (<%= showing_activity(entry) %>)
         </h3>
         <%= render :partial => 'timesheet_group', :locals => {:entry => entry, :name => entryname, :total => @total[entryname] } %>
       <% when :issue %>
