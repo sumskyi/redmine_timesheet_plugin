@@ -1,0 +1,22 @@
+<table class="list issues">
+  <thead>
+    <th width="10%">Total</th>
+    <th width="10%">Work</th>
+    <th width="10%">Vacation</th>
+    <th width="10%">Sick</th>
+    <th width="10%">Holydays & DayOff</th>
+    <th width="10%">Issues & Process</th>
+    <th></th>
+  </thead>
+  <tbody>
+  <tr id="time_entry_<%= username %>" class="time_entry <%= cycle("odd", "even") %> hascontextmenu">
+    <td align="center"><%= h number_with_precision(user['total'], :precision => @precision) %> <%= h(l(:field_hours)) -%></td>
+    <td align="center"><%= h number_with_precision(user['work'], :precision => @precision) %> <%= h(l(:field_hours)) -%></td>
+    <td align="center"><%= h number_with_precision(user['vacation'], :precision => @precision) %> <%= h(l(:field_hours)) -%></td>
+    <td align="center"><%= h number_with_precision(user['sick'], :precision => @precision) %> <%= h(l(:field_hours)) -%></td>
+    <td align="center"><%= h number_with_precision(user['holydays_and_dayoff'], :precision => @precision) %> <%= h(l(:field_hours)) -%></td>
+    <td align="center"><%= h number_with_precision(user['issues_and_process'], :precision => @precision) %> <%= h(l(:field_hours)) -%></td>
+  </tr>
+  </tbody>
+</table>
+<br />

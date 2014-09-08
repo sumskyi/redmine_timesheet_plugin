@@ -82,9 +82,14 @@ class TimesheetController < ApplicationController
 
     @grand_total = @total.collect{|k,v| v}.inject{|sum,n| sum + n}
 
-    respond_to do |format|
-      format.html { render :action => 'details', :layout => false if request.xhr? }
-      format.csv  { send_data @timesheet.to_csv, :filename => 'timesheet.csv', :type => "text/csv" }
+    if params[:timesheet][:summary]
+      calculate_summary
+      render :action => :summary
+    else
+      respond_to do |format|
+        format.html { render :action => 'details', :layout => false if request.xhr? }
+        format.csv  { send_data @timesheet.to_csv, :filename => 'timesheet.csv', :type => "text/csv" }
+      end
     end
   end
 
@@ -99,6 +104,49 @@ class TimesheetController < ApplicationController
   end
 
   private
+
+  def calculate_summary
+    @summary = {}
+    # NON-BILLABLE ACTIVITIES:
+    #enums = Enumeration.find([257,175,258,191,192,193,194,195,196,259,213,214,215])
+    #[175, 191, 192, 193, 194, 195, 196, 213, 214, 215, 257, 258, 259]
+    #["Infrastracture", "Reporting", "Meeting2", "Corp. event", "Evaluation", "Training", "Business trip", "Holidays", "SickDays", "DayOff", "NoTask", "Estimation", "Vacation2"]
+    activities = {
+      'all_non_billable' => [257,175,258,191,192,193,194,195,196,259,213,214,215,7562],
+      'vacation' => [259,7562],
+      'sick' => [214],
+      'holydays_and_dayoff' => [213,215],
+    }
+    @timesheet.time_entries.each do |user, logs|
+      user_hours = {
+        'total' => 0,
+        'work' => 0,
+        'vacation' => 0,
+        'sick' => 0,
+        'holydays_and_dayoff' => 0,
+        'issues_and_process' => 0,
+      }
+      logs[:logs].each do |row|
+        user_hours['total'] += row[:hours]
+        unless activities['all_non_billable'].include?(row[:activity_id])
+          user_hours['work'] += row[:hours]
+        else
+          if activities['vacation'].include?(row[:activity_id])
+            user_hours['vacation'] += row[:hours]
+          elsif activities['sick'].include?(row[:activity_id])
+            user_hours['sick'] += row[:hours]
+          elsif activities['holydays_and_dayoff'].include?(row[:activity_id])
+            user_hours['holydays_and_dayoff'] += row[:hours]
+          else
+            user_hours['issues_and_process'] += row[:hours]
+          end
+        end
+      end
+
+      @summary = @summary.merge(user => user_hours)
+    end
+  end
+
   def get_list_size
     @list_size = Setting.plugin_redmine_timesheet_plugin['list_size'].to_i
   end

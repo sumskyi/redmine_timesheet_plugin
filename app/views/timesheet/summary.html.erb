@@ -1,0 +1,35 @@
+<div class="contextual">
+  <%= link_to_csv_export(@timesheet) %>
+  <%= permalink_to_timesheet(@timesheet) %>
+</div>
+
+<h2><%= l(:timesheet_title)%></h2>
+
+<%= render :partial => 'form' %>
+
+<%= call_hook(:plugin_timesheet_views_timesheets_report_before_time_entries, { :timesheet => @timesheet }) %>
+
+<%= form_tag({}, { :id => 'time_entries'}) do -%>
+  <% if @timesheet.time_entries.length > 0 %>
+    <h2>Activities by user</h2>
+    <% @summary.each do |username, user| %>
+      <h3><%= h username -%> (<%= h number_with_precision(user['total'], :precision => @precision) %> <%= h(l(:field_hours)) -%>)</h3>
+      <%= render :partial => 'summary', :locals => {:user => user, :username => username, :total => user['total'] } %>
+    <% end %>
+  <% end %>
+<% end -%>
+
+<% content_for(:header_tags) do %>
+  <%= javascript_include_tag 'context_menu' %>
+  <%= stylesheet_link_tag 'context_menu' %>
+  <%= stylesheet_link_tag 'timesheet.css', :plugin => 'redmine_timesheet_plugin', :media => 'all' %>
+  <%= stylesheet_link_tag 'timesheet-print.css', :plugin => 'redmine_timesheet_plugin', :media => 'print' %>
+  <%= javascript_include_tag 'timesheet.js', :plugin => 'redmine_timesheet_plugin' %>
+  <%= call_hook(:plugin_timesheet_views_timesheets_report_header_tags, { :timesheet => @timesheet }) %>
+<% end %>
+
+<%= context_menu time_entries_context_menu_path %>
+
+<%# TODO: Typo on hook %>
+<%= call_hook(:plugin_timesheet_view_timesheets_report_bottom, { :timesheet => @timesheet }) %>
+<%= call_hook(:plugin_timesheet_views_timesheets_report_bottom, { :timesheet => @timesheet }) %>

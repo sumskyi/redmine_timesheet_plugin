@@ -16,3 +16,4 @@ en:
   text_active_users: "Active only"
   text_all_users: "All"
   timesheet_groups_label: Groups
+  timesheet_summary_label: "Summary report"
