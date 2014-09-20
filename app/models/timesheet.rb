@@ -1,5 +1,5 @@
 class Timesheet
-  attr_accessor :date_from, :date_to, :projects, :activities, :users, :groups, :allowed_projects, :period, :period_type
+  attr_accessor :date_from, :date_to, :projects, :clients, :activities, :users, :groups, :allowed_projects, :allowed_clients, :period, :period_type
 
   # Time entries on the Timesheet in the form of:
   #   project.name => {:logs => [time entries], :users => [users shown in logs] }
@@ -28,11 +28,13 @@ class Timesheet
 
   def initialize(options = { })
     self.projects = [ ]
+    self.clients = [ ]
     self.time_entries = options[:time_entries] || { }
     self.potential_time_entry_ids = options[:potential_time_entry_ids] || [ ]
     self.allowed_projects = options[:allowed_projects] || [ ]
+    self.allowed_clients = options[:allowed_clients] || [ ]
     self.groups = [ ]
-            
+
     unless options[:activities].nil?
       self.activities = options[:activities].collect do |activity_id|
         # Include project-overridden activities
@@ -51,7 +53,7 @@ class Timesheet
     else
       self.users = Timesheet.viewable_users.collect {|user| user.id.to_i }
     end
-    
+
     if User.current.allowed_to?(:see_all_project_timesheets, nil, :global => true)
       unless options[:groups].nil?
         self.groups= options[:groups].collect { |g| g.to_i }
@@ -64,7 +66,7 @@ class Timesheet
         self.groups= Group.all
       end
     end
-    
+
     if !options[:sort].nil? && options[:sort].respond_to?(:to_sym) && ValidSortOptions.keys.include?(options[:sort].to_sym)
       self.sort = options[:sort].to_sym
     else
@@ -140,6 +142,7 @@ class Timesheet
   def to_param
     {
       :projects => projects.collect(&:id),
+      :clients => clients.collect(&:name),
       :date_from => date_from,
       :date_to => date_to,
       :activities => activities,
@@ -173,6 +176,24 @@ class Timesheet
     end
     out
   end
+  def to_csv_client
+    out = "";
+    FCSV.generate(out, :encoding => 'u', :force_quotes => true) do |csv|
+      csv << csv_header_client
+
+      self.time_entries.each do |client, project|
+        project.each do |nameproj, logs|
+          logs[:clientsusers].each do |user,hours|
+            csv << time_entry_to_csv_client(user,hours,client, nameproj)
+          end
+        end
+        csv << ['',get_all_client_time(project),'','']
+        csv << ['','','','']
+        csv << ['','','','']
+      end
+    end
+    out
+  end
 
   def self.viewable_users
     if Setting.plugin_redmine_timesheet_plugin.present? && Setting.plugin_redmine_timesheet_plugin['user_status'] == 'all'
@@ -194,7 +215,61 @@ class Timesheet
     }
   end
 
-  protected
+  def fetch_time_entries_by_project_client
+    self.sort = "project"
+    self.time_entries = { }
+    self.clients.each do |client|
+      self.time_entries[client.name] ={ }
+      projects = self.allowed_projects.find_all { |project|
+        client.projects_ids.include?(project.id)
+      }
+      projects.each do |project|
+        logs = []
+        users = []
+        if User.current.admin?
+          # Administrators can see all time entries
+          logs = time_entries_for_all_users(project)
+          users = logs.collect(&:user).uniq.sort
+        elsif User.current.allowed_to?(:see_project_timesheets, project)
+          # Users with the Role and correct permission can see all time entries
+          logs = time_entries_for_all_users(project)
+          users = logs.collect(&:user).uniq.sort
+        elsif User.current.allowed_to?(:view_time_entries, project)
+          # Users with permission to see their time entries
+          logs = time_entries_for_current_user(project)
+          users = logs.collect(&:user).uniq.sort
+        else
+          # Rest can see nothing
+        end
+
+        clientsusers = {}
+        logs.each do |row|
+          username = row.user.firstname+" "+ row.user.lastname
+          if clientsusers[username].nil?
+            clientsusers[username] = row[:hours]
+          else
+            clientsusers[username] += row[:hours]
+          end
+        end
+
+        clientsobject = { :logs => logs, :users => users, :clientsusers => clientsusers }
+
+        # Append the parent project name
+        if project.parent.nil?
+          unless logs.empty?
+            self.time_entries[client.name][project.name] = clientsobject
+          end
+        else
+          unless logs.empty?
+            self.time_entries[client.name][project.parent.name + ' / ' + project.name] = clientsobject
+          end
+        end
+
+      end
+    end
+  end
+
+protected
 
   def csv_header
     csv_data = [
@@ -212,6 +287,16 @@ class Timesheet
     Redmine::Hook.call_hook(:plugin_timesheet_model_timesheet_csv_header, { :timesheet => self, :csv_data => csv_data})
     return csv_data
   end
+  def csv_header_client
+    csv_data = [
+      'Client',
+      'Projects',
+      'Users',
+      'Time'
+    ]
+    Redmine::Hook.call_hook(:plugin_timesheet_model_timesheet_csv_header_client, { :timesheet => self, :csv_data => csv_data})
+    return csv_data
+  end
 
   def time_entry_to_csv(time_entry)
     csv_data = [
@@ -227,6 +312,17 @@ class Timesheet
       time_entry.hours
     ]
     Redmine::Hook.call_hook(:plugin_timesheet_model_timesheet_time_entry_to_csv, { :timesheet => self, :time_entry => time_entry, :csv_data => csv_data})
+    return csv_data
+  end
+
+  def time_entry_to_csv_client(user,hours, client, project)
+    csv_data = [
+      client,
+      project,
+      user,
+      hours,
+    ]
+    #Redmine::Hook.call_hook(:plugin_timesheet_model_timesheet_time_entry_to_csv_client, { :timesheet => self, :time_entry => time_entry, :csv_data => csv_data})
     return csv_data
   end
 
@@ -275,8 +371,8 @@ class Timesheet
     return includes
   end
 
-  private
 
+private
 
   def time_entries_for_all_users(project)
     return project.time_entries.find(:all,
@@ -284,14 +380,14 @@ class Timesheet
       :include => self.includes,
       :order => "spent_on ASC")
   end
-  
+
   def time_entries_for_all_users_in_group(group)
     return TimeEntry.find(:all,
       :conditions => self.conditions(group.user_ids),
       :include => self.includes,
       :order => "spent_on ASC")
-  end 
-  
+  end
+
   def time_entries_for_current_user(project)
     return project.time_entries.find(:all,
       :conditions => self.conditions(User.current.id),
@@ -359,7 +455,8 @@ class Timesheet
       end
     end
   end
-  
+
+
   def fetch_time_entries_by_group
     groups = Group.where(:id => self.groups)
     groups.each do |group|
@@ -381,7 +478,7 @@ class Timesheet
       end
     end
   end
- 
+
   def fetch_time_entries_by_user
     self.users.each do |user_id|
       logs = []
@@ -405,8 +502,8 @@ class Timesheet
       end
     end
   end
-  
-  
+
+
 
 
   #   project => { :users => [users shown in logs],
@@ -454,12 +551,12 @@ class Timesheet
     end
   end
 
-  
+
   def fetch_time_entries_by_date
 
- 
+
     #---------------------------------------------------
-    
+
     logs = []
 
     #           extra_conditions = 'GROUP_BY spent_on'
@@ -468,11 +565,11 @@ class Timesheet
       :include => self.includes
       #                          :group => "spent_on"
     )
-       
-       
+
+
     unless logs.empty?
-   
-        
+
+
       logs.each do |log|
         date=log.spent_on
         logs_to_return=[]
@@ -481,13 +578,33 @@ class Timesheet
             logs_to_return << log2return
           end
         end
-     
-           
+
+
 
         self.time_entries[date] = { :logs => logs_to_return }
       end
     end
 
+  end
+
+  def get_all_client_time(project)
+    resultactivity = "Time: "
+    totalusers = {}
+    alltime =0
+    project.each do |nameproj,entry|
+    entry[:logs].each do |logs|
+      if totalusers[logs.activity.name].nil?
+        totalusers[logs.activity.name] = logs.hours
+      else
+        totalusers[logs.activity.name] += logs.hours
+      end
+      alltime += logs.hours
+    end
+    end
+    totalusers.each do |name, hours|
+      resultactivity += name.to_s + ": " + hours.to_s + " "
+    end
+    resultactivity + "All time: " + alltime.to_s+""
   end
 
   def l(*args)

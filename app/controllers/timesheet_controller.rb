@@ -29,6 +29,70 @@ class TimesheetController < ApplicationController
     end
   end
 
+  def clients
+    #load_filters_from_session_client
+    if params && params[:timesheet]
+
+      if params[:timesheet][:users].nil?
+        params[:timesheet][:users] = []
+      end
+      if params[:timesheet][:groups].nil?
+        params[:timesheet][:groups] = []
+      end
+
+      #@allparams = params
+      @timesheet = Timesheet.new( params[:timesheet] )
+    else
+      @timesheet = Timesheet.new
+    end
+
+    @timesheet.allowed_projects = allowed_projects
+    @timesheet.allowed_clients = allowed_clients
+
+    if @timesheet.allowed_clients.empty?
+      render :action => 'no_projects'
+      return
+    end
+    if params && params[:timesheet]
+
+      if !params[:timesheet][:clients].nil?
+        params[:timesheet][:projects] = []
+        params[:timesheet][:clients].each do |client|
+          @timesheet.projects = @timesheet.allowed_projects.find_all { |project|
+            params[:timesheet][:projects].include?(project.id.to_s)
+          }
+        end
+        @timesheet.projects = @timesheet.allowed_projects
+      end
+
+      if !params[:timesheet][:clients].blank?
+        @timesheet.clients = @timesheet.allowed_clients.find_all { |client|
+          params[:timesheet][:clients].include?(client.name)
+        }
+        @timesheet.projects  =[]
+        @timesheet.clients.each do |client|
+          @timesheet.projects = @timesheet.projects + @timesheet.allowed_projects.find_all { |project|
+            client.projects_ids.include?(project.id)
+          }
+        end
+
+      else
+        @timesheet.clients = @timesheet.allowed_clients
+        @timesheet.projects = @timesheet.allowed_projects
+      end
+
+      call_hook(:plugin_timesheet_controller_report_pre_fetch_time_entries, { :timesheet => @timesheet, :params => params })
+      #save_filters_to_session_client(@timesheet)
+      #@timesheet.fetch_time_entries_by_project
+      @timesheet.fetch_time_entries_by_project_client
+
+      respond_to do |format|
+        format.html { render :action => 'clients', :layout => false if request.xhr? }
+        format.csv  { send_data @timesheet.to_csv_client, :filename => 'timesheetClient.csv', :type => "text/csv" }
+      end
+    end
+  end
+
   def report
     if params && params[:timesheet]
       @timesheet = Timesheet.new(params[:timesheet])
@@ -206,6 +270,11 @@ class TimesheetController < ApplicationController
       session[SessionKey]['date_from'] = timesheet.date_from
       session[SessionKey]['date_to'] = timesheet.date_to
     end
+  end
+
+  def allowed_clients
+    client = Clienttimesheet.new
+    client.get_all_clients(allowed_projects)
   end
 
 end

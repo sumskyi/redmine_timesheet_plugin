@@ -103,6 +103,14 @@ module TimesheetHelper
     project_tree_options_for_select(available_projects, :selected => selected_projects)
   end
 
+  def client_options(timesheet)
+    available_clients = timesheet.allowed_clients
+    selected_clients = timesheet.clients.map(&:name)
+    selected_clients = available_clients.map(&:name) if selected_clients.blank?
+
+    project_tree_options_for_select(available_clients, :selected => selected_clients)
+  end
+
   def activity_options(timesheet, activities)
     options_from_collection_for_select(activities, :id, :name, timesheet.activities)
   end

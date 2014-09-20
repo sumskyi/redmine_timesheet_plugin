@@ -1,9 +1,11 @@
 en:
   timesheet_title: Timesheet
+  timesheet_clients_title: Timesheet Clients
   timesheet_date_range_label: Period
   timesheet_date_from_label: From
   timesheet_date_to_label: To
   timesheet_project_label: Project
+  timesheet_clients_label: Clients
   timesheet_activities_label: Activity
   timesheet_users_label: Users
   timesheet_showing_users: 'showing time for: '
