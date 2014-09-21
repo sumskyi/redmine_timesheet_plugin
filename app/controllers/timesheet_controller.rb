@@ -32,7 +32,6 @@ class TimesheetController < ApplicationController
   def clients
     #load_filters_from_session_client
     if params && params[:timesheet]
-
       if params[:timesheet][:users].nil?
         params[:timesheet][:users] = []
       end
@@ -53,6 +52,7 @@ class TimesheetController < ApplicationController
       render :action => 'no_projects'
       return
     end
+
     if params && params[:timesheet]
 
       if !params[:timesheet][:clients].nil?
