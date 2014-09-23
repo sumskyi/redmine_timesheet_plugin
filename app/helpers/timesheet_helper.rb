@@ -33,6 +33,28 @@ module TimesheetHelper
     end.join(", ")
   end
 
+  def showing_activity_client (project)
+    resultactivity = ""
+    totalusers = {}
+    alltime =0
+    project.each do |nameproj,entry|
+      entry[:logs].each do |logs|
+        if totalusers[logs.activity.name].nil?
+          totalusers[logs.activity.name] = logs.hours
+        else
+          totalusers[logs.activity.name] += logs.hours
+        end
+        alltime += logs.hours
+      end
+    end
+    totalusers.each do |name, hours|
+      resultactivity += name.to_s + ": " + hours.to_s + "<br>"
+    end
+    resultactivity << ("<b>All time: " + alltime.to_s + "</b>")
+
+    resultactivity.html_safe
+  end
+
   def permalink_to_timesheet(timesheet)
     link_to(l(:timesheet_permalink),
             :controller => 'timesheet',
@@ -105,9 +127,8 @@ module TimesheetHelper
 
   def client_options(timesheet)
     available_clients = timesheet.allowed_clients
-    selected_clients = timesheet.clients.map(&:name)
+    selected_clients = timesheet.clients.map(&:id)
     selected_clients = available_clients.map(&:id) if selected_clients.blank?
-
     options_from_collection_for_select(available_clients, :id, :name, :selected => selected_clients)
   end
 
@@ -136,4 +157,24 @@ module TimesheetHelper
                                        selected_users)
 
   end
+
+  def link_to_csv_export_client(timesheet)
+    link_to('CSV',
+            {
+                :controller => 'timesheet',
+                :action => 'clients',
+                :format => 'csv',
+                :timesheet => timesheet.to_param
+            },
+            :method => 'post',
+            :class => 'icon icon-timesheet')
+  end
+
+  def permalink_to_timesheet_client(timesheet)
+    link_to(l(:timesheet_permalink),
+            :controller => 'timesheet',
+            :action => 'clients',
+            :timesheet => timesheet.to_param)
+  end
+
 end

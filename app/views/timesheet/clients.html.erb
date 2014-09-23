@@ -1,7 +1,65 @@
+<div class="contextual">
+  <%= link_to_csv_export_client(@timesheet) %>
+  <%= permalink_to_timesheet_client(@timesheet) %>
+</div>
+
 <h2><%= l(:timesheet_clients_title)%></h2>
 <%= render :partial => 'form_clients' %>
-<% content_for(:header_tags) do %>
-<%= stylesheet_link_tag 'timesheet.css', :plugin => 'redmine_timesheet_plugin', :media => 'all' %>
-<%= stylesheet_link_tag 'timesheet-print.css', :plugin => 'redmine_timesheet_plugin', :media => 'print' %>
-<%= javascript_include_tag 'timesheet.js', :plugin => 'redmine_timesheet_plugin' %>
+
+<%= call_hook(:plugin_timesheet_views_timesheets_report_before_time_entries, { :timesheet => @timesheet }) %>
+
+<% @timesheet.time_entries.each do |client, project| %>
+  <% if project.length > 0 %>
+    <% clientflaf = false %>
+
+    <table class="list issues">
+      <thead>
+        <th width="25%">Client</th>
+        <th width="25%">Projects</th>
+        <th width="25%">Users</th>
+        <th width="25%">Time (h)</th>
+      </thead>
+      <tbody>
+      <% project.each do |nameproj, logs| %>
+        <% projectflag = false %>
+        <% logs[:clientsusers].each do |user, hours| %>
+          <tr>
+          <% unless clientflaf %>
+            <% if project.length > 1
+                rowspanclient = 0
+                project.each do |nameprojtemp,logstemp|
+                  rowspanclient += logstemp[:clientsusers].length
+                end
+              else
+                rowspanclient = logs[:clientsusers].length
+              end
+            %>
+            <td rowspan="<%=  rowspanclient %>">
+              <h2>
+                <b><%= client %></b></h2><br>
+                <i>Time (h): <br> <%= showing_activity_client(project)  %></i>
+            </td>
+            <% clientflaf = true   %>
+          <% end %>
+
+          <% unless projectflag %>
+            <% rowspanproject = logs[:clientsusers].length %>
+            <td rowspan="<%= rowspanproject %>"><%= nameproj %> </td>
+            <% projectflag = true   %>
+          <% end %>
+            <td><%= user %></td>
+            <td><%= hours %></td>
+          </tr>
+        <% end %>
+      <% end # project.each %>
+    </tbody>
+  </table><br>
+  <% end # if project.length > 0 %>
+<% end %>
+
+
+  <% content_for(:header_tags) do %>
+    <%= stylesheet_link_tag 'timesheet.css', :plugin => 'redmine_timesheet_plugin', :media => 'all' %>
+  <%= stylesheet_link_tag 'timesheet-print.css', :plugin => 'redmine_timesheet_plugin', :media => 'print' %>
+  <%= javascript_include_tag 'timesheet.js', :plugin => 'redmine_timesheet_plugin' %>
 <% end %>

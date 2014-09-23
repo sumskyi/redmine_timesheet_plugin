@@ -219,10 +219,11 @@ class Timesheet
     self.sort = "project"
     self.time_entries = { }
     self.clients.each do |client|
-      self.time_entries[client.name] ={ }
-      projects = self.allowed_projects.find_all { |project|
+      self.time_entries[client.name] = { }
+      projects = self.allowed_projects.find_all do |project|
         client.projects_ids.include?(project.id)
-      }
+      end
+
       projects.each do |project|
         logs = []
         users = []

@@ -54,26 +54,22 @@ class TimesheetController < ApplicationController
     end
 
     if params && params[:timesheet]
-
       if !params[:timesheet][:clients].nil?
         params[:timesheet][:projects] = []
-        params[:timesheet][:clients].each do |client|
-          @timesheet.projects = @timesheet.allowed_projects.find_all { |project|
-            params[:timesheet][:projects].include?(project.id.to_s)
-          }
-        end
-        @timesheet.projects = @timesheet.allowed_projects
       end
 
       if !params[:timesheet][:clients].blank?
-        @timesheet.clients = @timesheet.allowed_clients.find_all { |client|
-          params[:timesheet][:clients].include?(client.name)
-        }
-        @timesheet.projects  =[]
+        @timesheet.clients = @timesheet.allowed_clients.find_all do |client|
+          params[:timesheet][:clients].include?(client.id.to_s)
+        end
+
+        @timesheet.projects = []
         @timesheet.clients.each do |client|
-          @timesheet.projects = @timesheet.projects + @timesheet.allowed_projects.find_all { |project|
+          fit_allowed_projects = @timesheet.allowed_projects.find_all do |project|
             client.projects_ids.include?(project.id)
-          }
+          end
+
+          @timesheet.projects.concat(fit_allowed_projects)
         end
 
       else
@@ -84,6 +80,7 @@ class TimesheetController < ApplicationController
       call_hook(:plugin_timesheet_controller_report_pre_fetch_time_entries, { :timesheet => @timesheet, :params => params })
       #save_filters_to_session_client(@timesheet)
       #@timesheet.fetch_time_entries_by_project
+
       @timesheet.fetch_time_entries_by_project_client
 
       respond_to do |format|
@@ -230,13 +227,6 @@ class TimesheetController < ApplicationController
     @activities = TimeEntryActivity.all(:conditions => 'parent_id IS NULL')
   end
 
-  def allowed_projects
-    if User.current.admin?
-      return Project.find(:all, :order => 'name ASC')
-    else
-      return Project.find(:all, :conditions => Project.visible_condition(User.current), :order => 'name ASC')
-    end
-  end
 
   def clear_filters_from_session
     session[SessionKey] = nil
@@ -272,9 +262,18 @@ class TimesheetController < ApplicationController
     end
   end
 
+  def allowed_projects
+    @_allowed_projects ||= begin
+      if User.current.admin?
+        Project.find(:all, :order => 'name ASC')
+      else
+        Project.find(:all, :conditions => Project.visible_condition(User.current), :order => 'name ASC')
+      end
+    end
+  end
+
   def allowed_clients
-    client = Clienttimesheet.new
-    client.get_all_clients(allowed_projects)
+    @_allowed_clients ||= Clienttimesheet.new.get_all_clients(allowed_projects)
   end
 
 end

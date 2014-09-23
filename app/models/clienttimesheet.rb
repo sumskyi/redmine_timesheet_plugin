@@ -1,8 +1,5 @@
 class Clienttimesheet
-  attr_accessor :projects, :projects_ids, :name
-
-  def set_projects
-  end
+  attr_accessor :projects_ids, :name
 
   # dummy order_by result
   def lft
@@ -13,14 +10,17 @@ class Clienttimesheet
     false
   end
 
+  def id
+    projects_ids.first
+  end
+
   def get_all_clients(projectsin)
-    #self.projects = projectsin
     clients = {}
 
-    z = 0
     projectsin.each do |project|
       project.visible_custom_field_values.each do |custom_value|
         if !custom_value.value.blank?
+
           if custom_value.custom_field.name == 'Client'
             unless clients[custom_value.value]
               client = Clienttimesheet.new
@@ -32,12 +32,12 @@ class Clienttimesheet
             client.projects_ids << project.id
 
             clients[custom_value.value] = client
-            z+=1
           end
         end
       end
     end
-    return clients.values
+
+    clients.values
   end
 
   # this value will be rendered in select list
