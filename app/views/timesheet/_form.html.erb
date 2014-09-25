@@ -51,7 +51,7 @@
         <div>
           <div class="checkbox-label">
             <label for="timesheet_summary"><%= l(:timesheet_summary_label)%></label>
-            <%= check_box_tag 'timesheet[summary]', params[:timesheet].try(:[], :summary), { :class => 'checkbox' } %>
+            <%= check_box_tag 'timesheet[summary]', "1", params[:timesheet].try(:[], :summary), { :class => 'checkbox' } %>
           </div>
         </div>
         <%= submit_tag l(:button_apply),:class => 'button-small' -%>

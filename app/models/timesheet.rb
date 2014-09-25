@@ -424,7 +424,6 @@ private
   end
 
   def fetch_time_entries_by_project
-    puts self.projects
     self.projects.each do |project|
       logs = []
       users = []

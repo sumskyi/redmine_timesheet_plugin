@@ -92,6 +92,17 @@ class TimesheetController < ApplicationController
 
   def report
     if params && params[:timesheet]
+
+      if params[:timesheet][:users].nil?
+        params[:timesheet][:users] = []
+      end
+      if params[:timesheet][:groups].nil?
+        params[:timesheet][:groups] = []
+      end
+      if not params[:timesheet][:summary].nil?
+        params[:timesheet][:sort] = 'user'
+      end
+
       @timesheet = Timesheet.new(params[:timesheet])
     else
       redirect_to :action => 'index'
@@ -143,7 +154,7 @@ class TimesheetController < ApplicationController
 
     @grand_total = @total.collect{|k,v| v}.inject{|sum,n| sum + n}
 
-    if params[:timesheet][:summary]
+    if not params[:timesheet][:summary].nil?
       calculate_summary
       render :action => :summary
     else
@@ -265,9 +276,9 @@ class TimesheetController < ApplicationController
   def allowed_projects
     @_allowed_projects ||= begin
       if User.current.admin?
-        Project.find(:all, :order => 'name ASC')
+        Project.active.order('name ASC')
       else
-        Project.find(:all, :conditions => Project.visible_condition(User.current), :order => 'name ASC')
+        Project.active.where(Project.visible_condition(User.current)).order('name ASC')
       end
     end
   end
