@@ -36,14 +36,15 @@ class Timesheet
     self.groups = [ ]
 
     unless options[:activities].nil?
-      self.activities = options[:activities].collect do |activity_id|
-        # Include project-overridden activities
-        activity = TimeEntryActivity.find(activity_id)
-        project_activities = TimeEntryActivity.all(:conditions => ['parent_id IN (?)', activity.id]) if activity.parent_id.nil?
-        project_activities ||= []
+      #self.activities = options[:activities].collect do |activity_id|
+      #  # Include project-overridden activities
+      #  activity = TimeEntryActivity.find(activity_id)
+      #  #project_activities = TimeEntryActivity.all(:conditions => ['parent_id IN (?)', activity.id]) if activity.parent_id.nil?
+      #  project_activities ||= []
 
-        [activity.id.to_i] + project_activities.collect(&:id)
-      end.flatten.uniq.compact
+      #  [activity.id.to_i] + project_activities.collect(&:id)
+      #end.flatten.uniq.compact
+      self.activities = options[:activities].collect(&:to_i)
     else
       self.activities =  TimeEntryActivity.all.collect { |a| a.id.to_i }
     end
