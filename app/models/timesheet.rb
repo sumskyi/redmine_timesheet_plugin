@@ -1,5 +1,6 @@
 class Timesheet
-  attr_accessor :date_from, :date_to, :projects, :clients, :activities, :users, :groups, :allowed_projects, :allowed_clients, :period, :period_type
+  attr_accessor :date_from, :date_to, :projects, :clients, :activities, :users, :groups, :allowed_projects, :allowed_clients, :period, :period_type,
+    :parent_activities
 
   # Time entries on the Timesheet in the form of:
   #   project.name => {:logs => [time entries], :users => [users shown in logs] }
@@ -36,15 +37,15 @@ class Timesheet
     self.groups = [ ]
 
     unless options[:activities].nil?
-      #self.activities = options[:activities].collect do |activity_id|
-      #  # Include project-overridden activities
-      #  activity = TimeEntryActivity.find(activity_id)
-      #  #project_activities = TimeEntryActivity.all(:conditions => ['parent_id IN (?)', activity.id]) if activity.parent_id.nil?
-      #  project_activities ||= []
+      self.parent_activities = options[:activities].map(&:to_i)
+      self.activities = options[:activities].collect do |activity_id|
+        # Include project-overridden activities
+        activity = TimeEntryActivity.find(activity_id)
+        project_activities = TimeEntryActivity.all(:conditions => ['parent_id IN (?)', activity.id]) if activity.parent_id.nil?
+        project_activities ||= []
 
-      #  [activity.id.to_i] + project_activities.collect(&:id)
-      #end.flatten.uniq.compact
-      self.activities = options[:activities].collect(&:to_i)
+        [activity.id.to_i] + project_activities.collect(&:id)
+      end.flatten.uniq.compact
     else
       self.activities =  TimeEntryActivity.all.collect { |a| a.id.to_i }
     end
@@ -146,7 +147,7 @@ class Timesheet
       :clients => clients.collect(&:name),
       :date_from => date_from,
       :date_to => date_to,
-      :activities => activities,
+      :activities => (parent_activities || activities),
       :users => users,
       :sort => sort
     }
