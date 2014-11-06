@@ -56,18 +56,17 @@ class Timesheet
       self.users = Timesheet.viewable_users.collect {|user| user.id.to_i }
     end
 
-    if User.current.allowed_to?(:see_all_project_timesheets, nil, :global => true)
-      unless options[:groups].nil?
-        self.groups= options[:groups].collect { |g| g.to_i }
-        groups = Group.where(:id => self.groups)
-        groups.each do |group|
-          self.users += group.user_ids
-        end
-        self.users.uniq!
-      else
-        self.groups= Group.all
+    unless options[:groups].nil?
+      self.groups= options[:groups].collect { |g| g.to_i }
+      groups = Group.where(:id => self.groups)
+      groups.each do |group|
+        self.users += group.user_ids
       end
+      self.users.uniq!
+    else
+      self.groups= Group.all
     end
+
 
     if !options[:sort].nil? && options[:sort].respond_to?(:to_sym) && ValidSortOptions.keys.include?(options[:sort].to_sym)
       self.sort = options[:sort].to_sym
